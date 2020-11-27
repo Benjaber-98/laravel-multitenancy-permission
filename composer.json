@@ -1,0 +1,61 @@
+{
+    "name": "Benjaber-98/laravel-multitenancy-permission",
+	"description": "Laravel Permission Package For Multi-tenancy/Multi-Entity Applications Based on spatie/laravel-permission Package",
+    "keywords": [
+        "laravel",
+        "permission",
+        "permissions",
+        "roles",
+        "acl",
+        "rbac",
+        "security",
+        "benjaber"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Mahmoud Ben Jabir",
+            "email": "mahmoudbebjabir@gmail.com"
+        }
+    ],
+    "require": {
+        "php" : "^7.2.5|^8.0",
+        "illuminate/auth": "^6.0|^7.0|^8.0",
+        "illuminate/container": "^6.0|^7.0|^8.0",
+        "illuminate/contracts": "^6.0|^7.0|^8.0",
+        "illuminate/database": "^6.0|^7.0|^8.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^4.0|^5.0|^6.0",
+        "phpunit/phpunit": "^8.0|^9.0",
+        "predis/predis": "^1.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Benjaber\\Permission\\": "src"
+        },
+        "files": [
+
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Benjaber\\Permission\\Test\\": "tests"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Benjaber\\Permission\\PermissionServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

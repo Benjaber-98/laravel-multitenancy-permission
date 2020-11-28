@@ -249,7 +249,7 @@ trait HasPermissions
             ->map(function($permission) use ($entityId) {
                 return [
                     'permission_id' => $permission->id,
-                    'entity_id' => $entityId
+                    config('permission.entity.entity_key') => $entityId
                 ];
             })
             ->all();

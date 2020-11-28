@@ -45,40 +45,7 @@ trait HasRoles
             config('permission.table_names.model_has_roles'),
             config('permission.column_names.model_morph_key'),
             'role_id'
-        );
-    }
-
-    /**
-     * Scope the model query to certain roles only.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string|array|\Benjaber\Permission\Contracts\Role|\Illuminate\Support\Collection $roles
-     *
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeRole(Builder $query, $roles): Builder
-    {
-        if ($roles instanceof Collection) {
-            $roles = $roles->all();
-        }
-
-        if (! is_array($roles)) {
-            $roles = [$roles];
-        }
-
-        $roles = array_map(function ($role) {
-            if ($role instanceof Role) {
-                return $role;
-            }
-
-            $method = is_numeric($role) ? 'findById' : 'findByName';
-
-            return $this->getRoleClass()->{$method}($role);
-        }, $roles);
-
-        return $query->whereHas('roles', function (Builder $subQuery) use ($roles) {
-            $subQuery->whereIn(config('permission.table_names.roles').'.id', \array_column($roles, 'id'));
-        });
+        )->withPivot([config('permission.entity.entity_key')]);
     }
 
     /**
@@ -88,8 +55,10 @@ trait HasRoles
      *
      * @return $this
      */
-    public function assignRole(...$roles)
+    public function assignRole($roles, $entityId)
     {
+        $this->chackEntityAvailability($entityId);
+
         $roles = collect($roles)
             ->flatten()
             ->map(function ($role) {
@@ -102,7 +71,12 @@ trait HasRoles
             ->filter(function ($role) {
                 return $role instanceof Role;
             })
-            ->map->id
+            ->map(function($role) use ($entityId) {
+                return [
+                    'role_id' => $role->id,
+                    config('permission.entity.entity_key') => $entityId
+                ];
+            })
             ->all();
 
         $model = $this->getModel();
@@ -138,7 +112,9 @@ trait HasRoles
      */
     public function removeRole($role)
     {
-        $this->roles()->detach($this->getStoredRole($role));
+        $this->chackEntityAvailability($entityId);
+
+        $this->roles()->wherePivot(config('permission.entity.entity_key'), $entityId)->detach($this->getStoredRole($role));
 
         $this->load('roles');
 
@@ -154,11 +130,13 @@ trait HasRoles
      *
      * @return $this
      */
-    public function syncRoles(...$roles)
+    public function syncRoles($roles, $entityId)
     {
-        $this->roles()->detach();
+        $this->chackEntityAvailability($entityId);
 
-        return $this->assignRole($roles);
+        $this->roles()->wherePivot(config('permission.entity.entity_key'), $entityId)->detach();
+
+        return $this->assignRole($roles, $entityId);
     }
 
     /**
@@ -167,27 +145,29 @@ trait HasRoles
      * @param string|int|array|\Benjaber\Permission\Contracts\Role|\Illuminate\Support\Collection $roles
      * @return bool
      */
-    public function hasRole($roles): bool
+    public function hasRole($roles, $entityId): bool
     {
+        $this->chackEntityAvailability($entityId);
+
         if (is_string($roles) && false !== strpos($roles, '|')) {
             $roles = $this->convertPipeToArray($roles);
         }
 
         if (is_string($roles)) {
-            return $this->roles->contains('name', $roles);
+            return $this->roles->where('pivot.'.config('permission.entity.entity_key'), $entityId)->contains('name', $roles);
         }
 
         if (is_int($roles)) {
-            return $this->roles->contains('id', $roles);
+            return $this->roles->where('pivot.'.config('permission.entity.entity_key'), $entityId)->contains('id', $roles);
         }
 
         if ($roles instanceof Role) {
-            return $this->roles->contains('id', $roles->id);
+            return $this->roles->where('pivot.'.config('permission.entity.entity_key'), $entityId)->contains('id', $roles->id);
         }
 
         if (is_array($roles)) {
             foreach ($roles as $role) {
-                if ($this->hasRole($role)) {
+                if ($this->hasRole($role, $entityId)) {
                     return true;
                 }
             }
@@ -195,7 +175,7 @@ trait HasRoles
             return false;
         }
 
-        return $roles->intersect($this->roles)->isNotEmpty();
+        return $roles->intersect($this->roles->where('pivot.'.config('permission.entity.entity_key'), $entityId))->isNotEmpty();
     }
 
     /**
@@ -207,9 +187,9 @@ trait HasRoles
      *
      * @return bool
      */
-    public function hasAnyRole(...$roles): bool
+    public function hasAnyRole($roles, $entityId): bool
     {
-        return $this->hasRole($roles);
+        return $this->hasRole($roles, $entityId);
     }
 
     /**
@@ -218,18 +198,18 @@ trait HasRoles
      * @param  string|array|\Benjaber\Permission\Contracts\Role|\Illuminate\Support\Collection  $roles
      * @return bool
      */
-    public function hasAllRoles($roles): bool
+    public function hasAllRoles($roles, $entityId): bool
     {
         if (is_string($roles) && false !== strpos($roles, '|')) {
             $roles = $this->convertPipeToArray($roles);
         }
 
         if (is_string($roles)) {
-            return $this->roles->contains('name', $roles);
+            return $this->roles->where('pivot.'.config('permission.entity.entity_key'), $entityId)->contains('name', $roles);
         }
 
         if ($roles instanceof Role) {
-            return $this->roles->contains('id', $roles->id);
+            return $this->roles->where('pivot.'.config('permission.entity.entity_key'), $entityId)->contains('id', $roles->id);
         }
 
         $roles = collect()->make($roles)->map(function ($role) {
@@ -239,13 +219,6 @@ trait HasRoles
         return $roles->intersect($this->getRoleNames()) == $roles;
     }
 
-    /**
-     * Return all permissions directly coupled to the model.
-     */
-    public function getDirectPermissions(): Collection
-    {
-        return $this->permissions;
-    }
 
     public function getRoleNames(): Collection
     {

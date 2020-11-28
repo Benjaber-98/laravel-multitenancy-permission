@@ -1,5 +1,5 @@
 {
-    "name": "Benjaber-98/laravel-multitenancy-permission",
+    "name": "benjaber-98/laravel-multitenancy-permission",
 	"description": "Laravel Permission Package For Multi-tenancy/Multi-Entity Applications Based on spatie/laravel-permission Package",
     "keywords": [
         "laravel",

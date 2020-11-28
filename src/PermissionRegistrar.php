@@ -2,6 +2,7 @@
 
 namespace Benjaber\Permission;
 
+use Benjaber\Permission\Contracts\Entity;
 use Illuminate\Cache\CacheManager;
 use Illuminate\Contracts\Auth\Access\Authorizable;
 use Illuminate\Contracts\Auth\Access\Gate;
@@ -22,6 +23,9 @@ class PermissionRegistrar
 
     /** @var string */
     protected $roleClass;
+
+    /** @var string */
+    protected $entityClass;
 
     /** @var \Illuminate\Database\Eloquent\Collection */
     protected $permissions;
@@ -44,6 +48,8 @@ class PermissionRegistrar
     {
         $this->permissionClass = config('permission.models.permission');
         $this->roleClass = config('permission.models.role');
+        $this->entityClass = config('permission.models.entity');
+        
 
         $this->cacheManager = $cacheManager;
         $this->initializeCache();
@@ -126,7 +132,6 @@ class PermissionRegistrar
         if ($this->permissions === null) {
             $this->permissions = $this->cache->remember(self::$cacheKey, self::$cacheExpirationTime, function () {
                 return $this->getPermissionClass()
-                    ->with('roles')
                     ->get();
             });
         }
@@ -165,6 +170,23 @@ class PermissionRegistrar
     public function getRoleClass(): Role
     {
         return app($this->roleClass);
+    }
+
+    /**
+     * Get an instance of the entity class.
+     *
+     * @return \Benjaber\Permission\Contracts\Entity
+     */
+    public function getEntityClass(): Entity
+    {
+        return app($this->entityClass);
+    }
+
+    public function setEntityClass($entityClass)
+    {
+        $this->entityClass = $entityClass;
+
+        return $this;
     }
 
     /**

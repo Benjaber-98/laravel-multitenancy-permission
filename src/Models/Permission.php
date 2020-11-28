@@ -39,19 +39,7 @@ class Permission extends Model implements PermissionContract
 
         return static::query()->create($attributes);
     }
-
-    /**
-     * A permission can be applied to roles.
-     */
-//    public function roles(): BelongsToMany
-//    {
-//        return $this->belongsToMany(
-//            config('permission.models.role'),
-//            config('permission.table_names.role_has_permissions'),
-//            'permission_id',
-//            'role_id'
-//        );
-//    }
+    
 //
 //    /**
 //     * A permission belongs to some users of the model associated with its guard.

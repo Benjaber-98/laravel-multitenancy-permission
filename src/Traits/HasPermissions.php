@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
 use Benjaber\Permission\Contracts\Permission;
 use Benjaber\Permission\Exceptions\PermissionDoesNotExist;
+use Benjaber\Permission\Exceptions\EntityNotExists;
 use Benjaber\Permission\Exceptions\WildcardPermissionInvalidArgument;
 use Benjaber\Permission\PermissionRegistrar;
 use Benjaber\Permission\WildcardPermission;
@@ -14,6 +15,7 @@ use Benjaber\Permission\WildcardPermission;
 trait HasPermissions
 {
     private $permissionClass;
+    private $entityClass;
 
     public static function bootHasPermissions()
     {
@@ -35,6 +37,15 @@ trait HasPermissions
         return $this->permissionClass;
     }
 
+    public function getEntityClass()
+    {
+        if (! isset($this->entityClass)) {
+            $this->entityClass = app(PermissionRegistrar::class)->getEntityClass();
+        }
+
+        return $this->entityClass;
+    }
+
     /**
      * A model may have multiple direct permissions.
      */
@@ -46,35 +57,17 @@ trait HasPermissions
             config('permission.table_names.model_has_permissions'),
             config('permission.column_names.model_morph_key'),
             'permission_id'
-        )->withPivot(['entity_id']);
+        )->withPivot([config('permission.entity.entity_key')]);
     }
 
-    /**
-     * Scope the model query to certain permissions only.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string|array|\Benjaber\Permission\Contracts\Permission|\Illuminate\Support\Collection $permissions
-     *
-     * @return \Illuminate\Database\Eloquent\Builder
+    /*
+     * Chack if the entity or not
      */
-    public function scopePermission(Builder $query, $permissions): Builder
+    private function chackEntityAvailability($entityId)
     {
-        $permissions = $this->convertToPermissionModels($permissions);
-
-        $rolesWithPermissions = array_unique(array_reduce($permissions, function ($result, $permission) {
-            return array_merge($result, $permission->roles->all());
-        }, []));
-
-        return $query->where(function (Builder $query) use ($permissions, $rolesWithPermissions) {
-            $query->whereHas('permissions', function (Builder $subQuery) use ($permissions) {
-                $subQuery->whereIn(config('permission.table_names.permissions').'.id', \array_column($permissions, 'id'));
-            });
-            if (count($rolesWithPermissions) > 0) {
-                $query->orWhereHas('roles', function (Builder $subQuery) use ($rolesWithPermissions) {
-                    $subQuery->whereIn(config('permission.table_names.roles').'.id', \array_column($rolesWithPermissions, 'id'));
-                });
-            }
-        });
+        if(! $this->getEntityClass()->find($entityId)) {
+            throw new EntityNotExists;
+        }
     }
 
     /**
@@ -107,11 +100,9 @@ trait HasPermissions
      * @return bool
      * @throws PermissionDoesNotExist
      */
-    public function hasPermissionTo($permission): bool
+    public function hasPermissionTo($permission, $entityId): bool
     {
-        if (config('permission.enable_wildcard_permission', false)) {
-            return $this->hasWildcardPermission($permission);
-        }
+        $this->chackEntityAvailability($entityId);
 
         $permissionClass = $this->getPermissionClass();
 
@@ -127,49 +118,7 @@ trait HasPermissions
             throw new PermissionDoesNotExist;
         }
 
-        return $this->hasDirectPermission($permission) || $this->hasPermissionViaRole($permission);
-    }
-
-    /**
-     * Validates a wildcard permission against all permissions of a user.
-     *
-     * @param string|int|\Benjaber\Permission\Contracts\Permission $permission
-     *
-     * @return bool
-     */
-    protected function hasWildcardPermission($permission): bool
-    {
-        if (is_int($permission)) {
-            $permission = $this->getPermissionClass()->findById($permission);
-        }
-
-        if ($permission instanceof Permission) {
-            $permission = $permission->name;
-        }
-
-        if (! is_string($permission)) {
-            throw WildcardPermissionInvalidArgument::create();
-        }
-
-        foreach ($this->getAllPermissions() as $userPermission) {
-
-            $userPermission = new WildcardPermission($userPermission->name);
-
-            if ($userPermission->implies($permission)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @deprecated since 2.35.0
-     * @alias of hasPermissionTo()
-     */
-    public function hasUncachedPermissionTo($permission): bool
-    {
-        return $this->hasPermissionTo($permission);
+        return $this->hasDirectPermission($permission, $entityId);
     }
 
     /**
@@ -179,10 +128,10 @@ trait HasPermissions
      *
      * @return bool
      */
-    public function checkPermissionTo($permission): bool
+    public function checkPermissionTo($permission, $entityId): bool
     {
         try {
-            return $this->hasPermissionTo($permission);
+            return $this->hasPermissionTo($permission, $entityId);
         } catch (PermissionDoesNotExist $e) {
             return false;
         }
@@ -191,17 +140,20 @@ trait HasPermissions
     /**
      * Determine if the model has any of the given permissions.
      *
-     * @param array ...$permissions
+     * @param array $permissions
+     * @param $entityId
      *
      * @return bool
      * @throws \Exception
      */
-    public function hasAnyPermission(...$permissions): bool
+    public function hasAnyPermission(array $permissions, $entityId): bool
     {
+        $this->chackEntityAvailability($entityId);
+
         $permissions = collect($permissions)->flatten();
 
         foreach ($permissions as $permission) {
-            if ($this->checkPermissionTo($permission)) {
+            if ($this->checkPermissionTo($permission, $entityId)) {
                 return true;
             }
         }
@@ -212,34 +164,24 @@ trait HasPermissions
     /**
      * Determine if the model has all of the given permissions.
      *
-     * @param array ...$permissions
+     * @param array $permissions
      *
      * @return bool
      * @throws \Exception
      */
-    public function hasAllPermissions(...$permissions): bool
+    public function hasAllPermissions(array $permissions, $entityId): bool
     {
+        $this->chackEntityAvailability($entityId);
+
         $permissions = collect($permissions)->flatten();
 
         foreach ($permissions as $permission) {
-            if (! $this->hasPermissionTo($permission)) {
+            if (! $this->hasPermissionTo($permission, $entityId)) {
                 return false;
             }
         }
 
         return true;
-    }
-
-    /**
-     * Determine if the model has, via roles, the given permission.
-     *
-     * @param \Benjaber\Permission\Contracts\Permission $permission
-     *
-     * @return bool
-     */
-    protected function hasPermissionViaRole(Permission $permission): bool
-    {
-        return $this->hasRole($permission->roles);
     }
 
     /**
@@ -250,7 +192,7 @@ trait HasPermissions
      * @return bool
      * @throws PermissionDoesNotExist
      */
-    public function hasDirectPermission($permission): bool
+    public function hasDirectPermission($permission, $entityId): bool
     {
         $permissionClass = $this->getPermissionClass();
 
@@ -266,18 +208,7 @@ trait HasPermissions
             throw new PermissionDoesNotExist;
         }
 
-        return $this->permissions->contains('id', $permission->id);
-    }
-
-    /**
-     * Return all the permissions the model has via roles.
-     */
-    public function getPermissionsViaRoles(): Collection
-    {
-        return $this->loadMissing('roles', 'roles.permissions')
-            ->roles->flatMap(function ($role) {
-                return $role->permissions;
-            })->sort()->values();
+        return $this->permissions->where('pivot.'.config('permission.entity.entity_key'), $entityId)->contains('id', $permission->id);
     }
 
     /**
@@ -288,9 +219,6 @@ trait HasPermissions
         /** @var Collection $permissions */
         $permissions = $this->permissions;
 
-        if ($this->roles) {
-            $permissions = $permissions->merge($this->getPermissionsViaRoles());
-        }
 
         return $permissions->sort()->values();
     }
@@ -302,8 +230,10 @@ trait HasPermissions
      *
      * @return $this
      */
-    public function givePermissionTo(...$permissions)
+    public function givePermissionTo($permissions, $entityId)
     {
+        $this->chackEntityAvailability($entityId);
+
         $permissions = collect($permissions)
             ->flatten()
             ->map(function ($permission) {
@@ -316,7 +246,12 @@ trait HasPermissions
             ->filter(function ($permission) {
                 return $permission instanceof Permission;
             })
-            ->map->id
+            ->map(function($permission) use ($entityId) {
+                return [
+                    'permission_id' => $permission->id,
+                    'entity_id' => $entityId
+                ];
+            })
             ->all();
 
         $model = $this->getModel();
@@ -352,11 +287,13 @@ trait HasPermissions
      *
      * @return $this
      */
-    public function syncPermissions(...$permissions)
+    public function syncPermissions($permissions, $entityId)
     {
-        $this->permissions()->detach();
+        $this->chackEntityAvailability($entityId);
 
-        return $this->givePermissionTo($permissions);
+        $this->permissions()->wherePivot(config('permission.entity.entity_key'), $entityId)->detach();
+
+        return $this->givePermissionTo($permissions, $entityId);
     }
 
     /**
@@ -366,9 +303,11 @@ trait HasPermissions
      *
      * @return $this
      */
-    public function revokePermissionTo($permission)
+    public function revokePermissionTo($permission, $entityId)
     {
-        $this->permissions()->detach($this->getStoredPermission($permission));
+        $this->chackEntityAvailability($entityId);
+
+        $this->permissions()->wherePivot(config('permission.entity.entity_key'), $entityId)->detach($this->getStoredPermission($permission));
 
         $this->forgetCachedPermissions();
 
@@ -416,39 +355,4 @@ trait HasPermissions
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-    /**
-     * Check if the model has All of the requested Direct permissions.
-     * @param array ...$permissions
-     * @return bool
-     */
-    public function hasAllDirectPermissions(...$permissions): bool
-    {
-        $permissions = collect($permissions)->flatten();
-
-        foreach ($permissions as $permission) {
-            if (! $this->hasDirectPermission($permission)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Check if the model has Any of the requested Direct permissions.
-     * @param array ...$permissions
-     * @return bool
-     */
-    public function hasAnyDirectPermission(...$permissions): bool
-    {
-        $permissions = collect($permissions)->flatten();
-
-        foreach ($permissions as $permission) {
-            if ($this->hasDirectPermission($permission)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

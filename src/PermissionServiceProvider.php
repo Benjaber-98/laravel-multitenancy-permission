@@ -9,6 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\View\Compilers\BladeCompiler;
 use Benjaber\Permission\Contracts\Permission as PermissionContract;
 use Benjaber\Permission\Contracts\Role as RoleContract;
+use Benjaber\Permission\Contracts\Entity as EntityContract;
 
 class PermissionServiceProvider extends ServiceProvider
 {
@@ -56,13 +57,14 @@ class PermissionServiceProvider extends ServiceProvider
     protected function registerModelBindings()
     {
         $config = $this->app->config['permission.models'];
-
+        
         if (! $config) {
             return;
         }
 
         $this->app->bind(PermissionContract::class, $config['permission']);
         $this->app->bind(RoleContract::class, $config['role']);
+        $this->app->bind(EntityContract::class, $config['entity']);
     }
 
     protected function registerBladeExtensions()

@@ -39,7 +39,7 @@ return [
 
         'role' => Benjaber\Permission\Models\Role::class,
 
-        'entity' => '',
+        'entity' => Benjaber\Permission\Models\Entity::class,
 
     ],
 

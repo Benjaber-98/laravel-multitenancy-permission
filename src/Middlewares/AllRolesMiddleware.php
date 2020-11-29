@@ -5,7 +5,7 @@ namespace Benjaber\Permission\Middlewares;
 use Closure;
 use Benjaber\Permission\Exceptions\UnauthorizedException;
 
-class RoleMiddleware
+class AllRolesMiddleware
 {
     public function handle($request, Closure $next, $role, $entityId)
     {
@@ -17,7 +17,7 @@ class RoleMiddleware
             ? $role
             : explode('|', $role);
 
-        if (! auth()->user()->hasAnyRole($roles, $entityId)) {
+        if (! auth()->user()->hasAllRoles($roles, $entityId)) {
             throw UnauthorizedException::forRoles($roles);
         }
 

@@ -2,14 +2,14 @@
 
 namespace Benjaber\Permission\Middlewares;
 
-use Closure;
 use Benjaber\Permission\Exceptions\UnauthorizedException;
+use Closure;
 
-class PermissionMiddleware
+class AllPermissionsMiddleware
 {
     public function handle($request, Closure $next, $permission, $entityId)
     {
-        if (app('auth')->guest()) {
+        if (auth()->guest()) {
             throw UnauthorizedException::notLoggedIn();
         }
 
@@ -17,7 +17,7 @@ class PermissionMiddleware
             ? $permission
             : explode('|', $permission);
 
-        if (! auth()->user()->hasAnyPermission($permissions, $entityId)) {
+        if (! auth()->user()->hasAllPermissions($permissions, $entityId)) {
             throw UnauthorizedException::forPermissions($permissions);
         }
 

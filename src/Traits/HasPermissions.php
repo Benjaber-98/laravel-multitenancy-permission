@@ -2,15 +2,12 @@
 
 namespace Benjaber\Permission\Traits;
 
-use Illuminate\Database\Eloquent\Builder;
+use Benjaber\Permission\Contracts\Permission;
+use Benjaber\Permission\Exceptions\EntityNotExists;
+use Benjaber\Permission\Exceptions\PermissionDoesNotExist;
+use Benjaber\Permission\PermissionRegistrar;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
-use Benjaber\Permission\Contracts\Permission;
-use Benjaber\Permission\Exceptions\PermissionDoesNotExist;
-use Benjaber\Permission\Exceptions\EntityNotExists;
-use Benjaber\Permission\Exceptions\WildcardPermissionInvalidArgument;
-use Benjaber\Permission\PermissionRegistrar;
-use Benjaber\Permission\WildcardPermission;
 
 trait HasPermissions
 {
@@ -71,34 +68,11 @@ trait HasPermissions
     }
 
     /**
-     * @param string|array|\Benjaber\Permission\Contracts\Permission|\Illuminate\Support\Collection $permissions
-     *
-     * @return array
-     */
-    protected function convertToPermissionModels($permissions): array
-    {
-        if ($permissions instanceof Collection) {
-            $permissions = $permissions->all();
-        }
-
-        $permissions = is_array($permissions) ? $permissions : [$permissions];
-
-        return array_map(function ($permission) {
-            if ($permission instanceof Permission) {
-                return $permission;
-            }
-
-            return $this->getPermissionClass()->findByName($permission);
-        }, $permissions);
-    }
-
-    /**
      * Determine if the model may perform the given permission.
      *
      * @param string|int|\Benjaber\Permission\Contracts\Permission $permission
-     *
+     * @param $entityId
      * @return bool
-     * @throws PermissionDoesNotExist
      */
     public function hasPermissionTo($permission, $entityId): bool
     {
@@ -166,8 +140,8 @@ trait HasPermissions
      *
      * @param array $permissions
      *
+     * @param $entityId
      * @return bool
-     * @throws \Exception
      */
     public function hasAllPermissions(array $permissions, $entityId): bool
     {

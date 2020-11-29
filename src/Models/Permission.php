@@ -2,19 +2,16 @@
 
 namespace Benjaber\Permission\Models;
 
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Benjaber\Permission\Contracts\Permission as PermissionContract;
 use Benjaber\Permission\Exceptions\PermissionAlreadyExists;
 use Benjaber\Permission\Exceptions\PermissionDoesNotExist;
 use Benjaber\Permission\PermissionRegistrar;
-use Benjaber\Permission\Traits\HasRoles;
 use Benjaber\Permission\Traits\RefreshesPermissionCache;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 
 class Permission extends Model implements PermissionContract
 {
-    use HasRoles;
     use RefreshesPermissionCache;
 
     protected $guarded = ['id'];
@@ -39,7 +36,7 @@ class Permission extends Model implements PermissionContract
 
         return static::query()->create($attributes);
     }
-    
+
 //
 //    /**
 //     * A permission belongs to some users of the model associated with its guard.

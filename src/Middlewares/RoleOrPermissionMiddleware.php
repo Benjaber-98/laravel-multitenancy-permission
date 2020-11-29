@@ -8,9 +8,9 @@ use Benjaber\Permission\Exceptions\UnauthorizedException;
 
 class RoleOrPermissionMiddleware
 {
-    public function handle($request, Closure $next, $roleOrPermission)
+    public function handle($request, Closure $next, $roleOrPermission, $entityId)
     {
-        if (Auth::guest()) {
+        if (auth()->guest()) {
             throw UnauthorizedException::notLoggedIn();
         }
 
@@ -18,7 +18,7 @@ class RoleOrPermissionMiddleware
             ? $roleOrPermission
             : explode('|', $roleOrPermission);
 
-        if (! Auth::user()->hasAnyRole($rolesOrPermissions) && ! Auth::user()->hasAnyPermission($rolesOrPermissions)) {
+        if (! auth()->user()->hasAnyRole($rolesOrPermissions, $entityId) && ! auth()->user()->hasAnyPermission($rolesOrPermissions, $entityId)) {
             throw UnauthorizedException::forRolesOrPermissions($rolesOrPermissions);
         }
 

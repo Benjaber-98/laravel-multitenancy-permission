@@ -2,13 +2,12 @@
 
 namespace Benjaber\Permission\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Benjaber\Permission\Contracts\Role as RoleContract;
 use Benjaber\Permission\Exceptions\RoleAlreadyExists;
 use Benjaber\Permission\Exceptions\RoleDoesNotExist;
 use Benjaber\Permission\Traits\HasPermissions;
 use Benjaber\Permission\Traits\RefreshesPermissionCache;
+use Illuminate\Database\Eloquent\Model;
 
 class Role extends Model implements RoleContract
 {

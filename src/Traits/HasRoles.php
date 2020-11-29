@@ -2,11 +2,10 @@
 
 namespace Benjaber\Permission\Traits;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Support\Collection;
 use Benjaber\Permission\Contracts\Role;
 use Benjaber\Permission\PermissionRegistrar;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Collection;
 
 trait HasRoles
 {
@@ -195,7 +194,8 @@ trait HasRoles
     /**
      * Determine if the model has all of the given role(s).
      *
-     * @param  string|array|\Benjaber\Permission\Contracts\Role|\Illuminate\Support\Collection  $roles
+     * @param string|array|\Benjaber\Permission\Contracts\Role|\Illuminate\Support\Collection $roles
+     * @param $entityId
      * @return bool
      */
     public function hasAllRoles($roles, $entityId): bool

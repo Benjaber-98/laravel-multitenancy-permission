@@ -208,6 +208,8 @@ trait HasPermissions
     {
         $this->chackEntityAvailability($entityId);
 
+        $permissionsArray = [];
+
         $permissions = collect($permissions)
             ->flatten()
             ->map(function ($permission) {
@@ -220,18 +222,15 @@ trait HasPermissions
             ->filter(function ($permission) {
                 return $permission instanceof Permission;
             })
-            ->map(function($permission) use ($entityId) {
-                return [
-                    'permission_id' => $permission->id,
-                    config('permission.entity.entity_key') => $entityId
-                ];
+            ->each(function($permission) use ($entityId, &$permissionsArray) {
+                $permissionsArray[$permission->id] = [config('permission.entity.entity_key') => $entityId];
             })
-            ->all();
+            ->flatten();
 
         $model = $this->getModel();
 
         if ($model->exists) {
-            $this->permissions()->sync($permissions, false);
+            $this->permissions()->attach($permissionsArray);
             $model->load('permissions');
         } else {
             $class = \get_class($model);
@@ -242,7 +241,7 @@ trait HasPermissions
                     if ($modelLastFiredOn !== null && $modelLastFiredOn === $model) {
                         return;
                     }
-                    $object->permissions()->sync($permissions, false);
+                    $object->permissions()->attach($permissionsArray);
                     $object->load('permissions');
                     $modelLastFiredOn = $object;
                 }

@@ -182,7 +182,7 @@ trait HasPermissions
             throw new PermissionDoesNotExist;
         }
 
-        return $this->permissions->where('pivot.'.config('permission.entity.entity_key'), $entityId)->contains('id', $permission->id);
+        return $this->permissions()->wherePivot(config('permission.entity.entity_key'), $entityId)->wherePivot('permission_id', $permission->id)->exists();
     }
 
     /**

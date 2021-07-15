@@ -49,7 +49,7 @@ class PermissionRegistrar
         $this->permissionClass = config('permission.models.permission');
         $this->roleClass = config('permission.models.role');
         $this->entityClass = config('permission.models.entity');
-        
+
 
         $this->cacheManager = $cacheManager;
         $this->initializeCache();
@@ -175,9 +175,8 @@ class PermissionRegistrar
     /**
      * Get an instance of the entity class.
      *
-     * @return \Benjaber\Permission\Contracts\Entity
      */
-    public function getEntityClass(): Entity
+    public function getEntityClass()
     {
         return app($this->entityClass);
     }

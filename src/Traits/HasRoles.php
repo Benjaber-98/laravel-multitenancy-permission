@@ -148,12 +148,15 @@ trait HasRoles
     {
         $this->chackEntityAvailability($entityId);
 
+        $roleClass = $this->getRoleClass();
+
         if (is_string($roles) && false !== strpos($roles, '|')) {
             $roles = $this->convertPipeToArray($roles);
         }
 
         if (is_string($roles)) {
-            return $this->roles->where('pivot.'.config('permission.entity.entity_key'), $entityId)->contains('name', $roles);
+            $role = $roleClass->findByName($roles);
+            return $this->roles->where('pivot.'.config('permission.entity.entity_key'), $entityId)->contains('id', $role->id);
         }
 
         if (is_int($roles)) {
